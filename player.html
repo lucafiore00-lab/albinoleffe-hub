@@ -733,8 +733,8 @@
 
         fetch(this.cloudUrl)
           .then(res => {
-            if (!res.ok) throw new Error();
-            return res.json();
+            if (!res.ok) throw new Error("Risposta del server non OK (Stato: " + res.status + ")");
+            return res.json().catch(() => { throw new Error("Risposta non in formato JSON valido"); });
           })
           .then(data => {
             if (data && Array.isArray(data.players)) {
@@ -743,11 +743,14 @@
               // Salva copia locale sul telefono del ragazzo per navigazione offline successiva
               localStorage.setItem('soccer_team_db', JSON.stringify(this.db));
             } else {
-              throw new Error();
+              throw new Error("Il database scaricato è incompleto o non valido.");
             }
           })
-          .catch(() => {
-            console.warn("Impossibile scaricare i dati dal cloud, uso la rosa atleti dimostrativa locale.");
+          .catch((err) => {
+            console.warn("Impossibile scaricare i dati dal cloud, uso la rosa atleti dimostrativa locale.", err);
+            // Alert diagnostico temporaneo per capire l'errore esatto sul telefono
+            alert("⚠️ ERRORE CONNESSIONE CLOUD:\nImpossibile scaricare la rosa dei giocatori dal server.\n\nDettaglio errore: " + (err && err.message ? err.message : "Connessione rifiutata o blocco sicurezza/CORS") + "\n\nURL utilizzato:\n" + this.cloudUrl);
+            
             if (!this.db) {
               if (window.MOCK_DATA) {
                 this.db = JSON.parse(JSON.stringify(window.MOCK_DATA));
