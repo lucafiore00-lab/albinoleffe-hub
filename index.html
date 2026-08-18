@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soccer Team Manager & F-V Monitoring</title>
+  <!-- Global error catcher for debugging -->
+  <script>
+    window.addEventListener('error', function(e) {
+      const errorDiv = document.getElementById('debug-error-banner') || document.createElement('div');
+      errorDiv.id = 'debug-error-banner';
+      errorDiv.style.position = 'fixed';
+      errorDiv.style.top = '0';
+      errorDiv.style.left = '0';
+      errorDiv.style.width = '100%';
+      errorDiv.style.background = '#ef4444';
+      errorDiv.style.color = '#fff';
+      errorDiv.style.padding = '14px 24px';
+      errorDiv.style.fontSize = '14px';
+      errorDiv.style.fontWeight = 'bold';
+      errorDiv.style.zIndex = '99999';
+      errorDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
+      errorDiv.style.fontFamily = 'monospace';
+      errorDiv.innerHTML = '⚠️ Errore JavaScript: ' + e.message + ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')';
+      document.body.appendChild(errorDiv);
+    });
+  </script>
+  <!-- Google Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Layout Container -->
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-container">
+          <img src="albinoleffe_logo.png" alt="U.C. AlbinoLeffe Logo" class="albinoleffe-logo">
+        </div>
+        <div class="logo-text">
+          <h1>ALBINOLEFFE</h1>
+          <span>Performance Hub</span>
+        </div>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-target="dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-target="schedule-panel">
+          <i data-lucide="calendar"></i>
+          <span>Programmazione</span>
+        </button>
+        <button class="nav-item" data-target="roster">
+          <i data-lucide="users"></i>
+          <span>Rosa Calciatori</span>
+        </button>
+        <button class="nav-item" data-target="daily-log">
+          <i data-lucide="clipboard-signature"></i>
+          <span>Daily Monitoring</span>
+        </button>
+        <button class="nav-item" data-target="fv-profile">
+          <i data-lucide="trending-up"></i>
+          <span>Profilo F-V Squat</span>
+        </button>
+        <button class="nav-item" data-target="neuro-loads">
+          <i data-lucide="zap"></i>
+          <span>Carichi Neuromuscolari</span>
+        </button>
+        <button class="nav-item" data-target="aerobic-loads">
+          <i data-lucide="wind"></i>
+          <span>Carichi Aerobici</span>
+        </button>
+        <button class="nav-item" data-target="physical-tests">
+          <i data-lucide="gauge"></i>
+          <span>Test Fisici & Salto</span>
+        </button>
+        <button class="nav-item" data-target="player-portal">
+          <i data-lucide="qr-code"></i>
+          <span>Portale Giocatori</span>
+        </button>
+        <button class="nav-item" data-target="backup-panel">
+          <i data-lucide="database"></i>
+          <span>Gestione Database</span>
+        </button>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="db-status">
+          <div class="status-indicator online" id="db-status-dot"></div>
+          <div class="status-info">
+            <span class="status-title" id="db-status-text">Database Attivo</span>
+            <span class="status-desc" id="db-status-counts">10 Atleti | 145 Log</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Top Bar Header -->
+      <header class="top-bar">
+        <div class="header-title">
+          <h2 id="page-title">Dashboard Squadra</h2>
+          <p id="page-subtitle" class="text-muted">Riepilogo e andamento delle metriche quotidiane</p>
+        </div>
+        
+        <div class="header-actions">
+          <div class="quick-date-selector">
+            <i data-lucide="calendar"></i>
+            <input type="date" id="global-date" value="">
+          </div>
+          <button class="btn btn-primary" onclick="app.showTab('daily-log')">
+            <i data-lucide="plus"></i>
+            <span>Nuovo Log Giornaliero</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Viewports (Tabs) -->
+      <div class="viewports-container">
+
+        <!-- 1. DASHBOARD VIEW -->
+        <section id="dashboard" class="viewport active">
+          <!-- Stats Grid -->
+          <div class="stats-grid">
+            <!-- Card 1: CMJ Alerts -->
+            <div class="stat-card">
+              <div class="stat-icon bg-danger-soft text-danger">
+                <i data-lucide="zap-off"></i>
+              </div>
+              <div class="stat-data">
+                <span class="stat-label">Fatica CMJ</span>
+                <h3 class="stat-value" id="dash-cmj-alerts-count">0 Atleti</h3>
+                <span class="stat-trend text-danger" id="dash-cmj-alerts-desc" style="white-space: normal; line-height: 1.2; font-size: 11px;">Caricamento...</span>
+              </div>
+            </div>
+            
+            <!-- Card 2: Sleep Alerts -->
+            <div class="stat-card">
+              <div class="stat-icon bg-purple-soft text-purple">
+                <i data-lucide="moon"></i>
+              </div>
+              <div class="stat-data">
+                <span class="stat-label">Stato Sonno</span>
+                <h3 class="stat-value" id="dash-sleep-alerts-count">0 Atleti</h3>
+                <span class="stat-trend text-purple" id="dash-sleep-alerts-desc" style="white-space: normal; line-height: 1.2; font-size: 11px;">Caricamento...</span>
+              </div>
+            </div>
+
+            <!-- Card 3: Workload sRPE -->
+            <div class="stat-card">
+              <div class="stat-icon bg-info-soft text-info">
+                <i data-lucide="flame"></i>
+              </div>
+              <div class="stat-data">
+                <span class="stat-label">Carico sRPE Oggi</span>
+                <h3 class="stat-value" id="dash-rpe-value">0</h3>
+                <span class="stat-trend text-muted" id="dash-rpe-desc" style="white-space: normal; line-height: 1.2; font-size: 11px;">Caricamento...</span>
+              </div>
+            </div>
+
+            <!-- Card 4: Unavailability -->
+            <div class="stat-card">
+              <div class="stat-icon bg-warning-soft text-warning">
+                <i data-lucide="heart-off"></i>
+              </div>
+              <div class="stat-data">
+                <span class="stat-label">Giocatori Indisponibili</span>
+                <h3 class="stat-value" id="dash-injured-value">0</h3>
+                <span class="stat-trend text-warning" id="dash-injured-desc" style="white-space: normal; line-height: 1.2; font-size: 11px;">Caricamento...</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Dashboard Split Grid -->
+          <div class="dashboard-split-grid" style="margin-top: 25px; margin-bottom: 25px;">
+            <!-- Left Side: Workload Chart -->
+            <div class="chart-container-card" style="margin-bottom: 0;">
+              <div class="card-header">
+                <h3>Andamento del Carico di Lavoro (Session-RPE)</h3>
+                <span class="text-muted">Carico medio di squadra degli ultimi 14 giorni</span>
+              </div>
+              <div class="card-body">
+                <canvas id="team-load-chart"></canvas>
+              </div>
+            </div>
+
+            <!-- Right Side: Attention List (Daily Alerts) -->
+            <div class="card" style="margin-bottom: 0; display: flex; flex-direction: column; height: 100%;">
+              <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);">
+                <div>
+                  <h3 style="margin: 0; font-size: 15px; font-weight: 700;">Atleti in Evidenza / Alert</h3>
+                  <span class="text-muted" style="font-size: 11px;">Confronto rispetto alle medie personali</span>
+                </div>
+                <span class="badge badge-danger" id="alerts-count">0 Alert</span>
+              </div>
+              <div class="card-body" style="flex-grow: 1; overflow-y: auto; padding: 0; max-height: 300px;">
+                <div class="table-container" style="border: none; border-radius: 0; margin-bottom: 0;">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Giocatore</th>
+                        <th>Alert</th>
+                        <th>Valore vs Media</th>
+                      </tr>
+                    </thead>
+                    <tbody id="dashboard-alerts-body">
+                      <!-- Dynamic Alerts -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Staff Notebook Section -->
+          <div class="notebook-container-card card-double" style="margin-top: 0; margin-bottom: 25px;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <i data-lucide="notebook" style="color: var(--primary); width: 22px; height: 22px;"></i>
+                <h3 style="margin: 0; font-size: 16px; font-weight: 700;">Taccuino dello Staff: Programma del Giorno</h3>
+              </div>
+              <span class="badge" id="notebook-type-badge" style="background-color: var(--primary-soft); color: var(--primary); font-weight: 700;">Nessuna Attività</span>
+            </div>
+            <div class="card-body notebook-paper" style="padding: 24px;">
+              <div class="notebook-grid">
+                <!-- Session Title/Time -->
+                <div class="notebook-header-row" style="margin-bottom: 15px; border-bottom: 2px dashed var(--border-color); padding-bottom: 15px;">
+                  <h4 id="notebook-title" style="font-size: 18px; color: var(--text-white); margin: 0 0 4px 0;">Nessuna attività programmata</h4>
+                  <span id="notebook-time" class="text-muted" style="font-size: 13px; display: inline-flex; align-items: center; gap: 4px;">
+                    <i data-lucide="clock" style="width: 12px; height: 12px;"></i> 00:00
+                  </span>
+                </div>
+                
+                <div class="notebook-sections-split" style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                  <!-- Objectives -->
+                  <div class="notebook-column">
+                    <h5 style="color: var(--primary); text-transform: uppercase; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; margin: 0 0 10px 0; display: flex; align-items: center; gap: 6px;">
+                      <i data-lucide="target" style="width: 14px; height: 14px;"></i> Obiettivi della Sessione
+                    </h5>
+                    <div id="notebook-objectives" class="notebook-content-text" style="line-height: 1.6; font-size: 14px; color: var(--text-main); white-space: pre-line;">
+                      Nessun impegno salvato per questa data. Accedi al menù "Programmazione" per inserire un allenamento o una partita.
+                    </div>
+                  </div>
+                  
+                  <!-- Proposed Workouts -->
+                  <div class="notebook-column">
+                    <h5 style="color: var(--primary); text-transform: uppercase; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; margin: 0 0 10px 0; display: flex; align-items: center; gap: 6px;">
+                      <i data-lucide="dumbbell" style="width: 14px; height: 14px;"></i> Esercitazioni Proposte
+                    </h5>
+                    <div id="notebook-workouts" class="notebook-content-text" style="line-height: 1.6; font-size: 14px; color: var(--text-main); white-space: pre-line;">
+                      -
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. ROSTER (ROSA) VIEW -->
+        <section id="roster" class="viewport">
+          <div class="section-actions-bar">
+            <div class="search-box">
+              <i data-lucide="search"></i>
+              <input type="text" id="roster-search" placeholder="Cerca giocatore o ruolo...">
+            </div>
+            <button class="btn btn-primary" id="btn-add-player">
+              <i data-lucide="user-plus"></i>
+              <span>Aggiungi Giocatore</span>
+            </button>
+          </div>
+
+          <!-- Roster Grid -->
+          <div class="roster-grid" id="roster-grid">
+            <!-- Dynamic Player Cards -->
+          </div>
+
+          <!-- Player Details Modal (Dynamic content or dedicated drawer) -->
+          <div class="drawer" id="player-detail-drawer">
+            <div class="drawer-content">
+              <div class="drawer-header">
+                <div class="player-profile-header">
+                  <div class="player-avatar-large" id="player-det-avatar">MR</div>
+                  <div>
+                    <h2 id="player-det-name">Marco Rossi</h2>
+                    <div style="display: flex; gap: 6px; margin-top: 4px;">
+                      <span class="badge" id="player-det-role">Centrocampista</span>
+                      <span class="badge" id="player-det-status">Disponibile</span>
+                    </div>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="app.editSelectedPlayer()" style="padding: 6px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                    <i data-lucide="edit-2" style="width: 12px; height: 12px;"></i> Modifica
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="app.deleteSelectedPlayer()" style="padding: 6px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; background: rgba(239, 68, 68, 0.08); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.12); cursor: pointer;">
+                    <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i> Elimina
+                  </button>
+                  <button class="btn-close" id="btn-close-drawer" style="position: static; margin-left: 10px;">&times;</button>
+                </div>
+              </div>
+              
+              <div class="drawer-body">
+                <!-- Info cards grid -->
+                <div class="player-info-grid">
+                  <div class="info-item">
+                    <span class="info-label">Altezza / Peso</span>
+                    <span class="info-val" id="player-det-phys">178 cm / 72 kg</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Età</span>
+                    <span class="info-val" id="player-det-age">28 anni</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">FC Max</span>
+                    <span class="info-val" id="player-det-fcmax">192 bpm</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">VAM</span>
+                    <span class="info-val" id="player-det-vam">16.5 km/h</span>
+                  </div>
+                  <div class="info-item card-highlight">
+                    <span class="info-label">Media Storica CMJ</span>
+                    <span class="info-val text-success" id="player-det-cmj-avg">38.5 cm</span>
+                  </div>
+                </div>
+
+                <!-- Tabs inside Drawer -->
+                <div class="drawer-tabs">
+                  <button class="drawer-tab-btn active" data-tab="det-trends">Storico & Wellness</button>
+                  <button class="drawer-tab-btn" data-tab="det-squat">F-V Squat</button>
+                  <button class="drawer-tab-btn" data-tab="det-tests">Test Fisici</button>
+                </div>
+
+                <!-- Tab: Trends -->
+                <div class="drawer-tab-content active" id="det-trends">
+                  <div class="chart-container-card">
+                    <div class="card-header">
+                      <h4>Monitoraggio Readiness CMJ</h4>
+                      <p class="text-muted">Andamento del salto quotidiano e confronto con la media globale</p>
+                    </div>
+                    <div class="card-body">
+                      <canvas id="player-cmj-chart"></canvas>
+                    </div>
+                  </div>
+                  
+                  <div class="chart-container-card" style="margin-top: 15px;">
+                    <div class="card-header">
+                      <h4>Monitoraggio Carico di Lavoro (sRPE) e Sonno</h4>
+                      <p class="text-muted">Correlazione tra sforzo percepito e riposo</p>
+                    </div>
+                    <div class="card-body">
+                      <canvas id="player-workload-chart"></canvas>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Tab: Squat F-V -->
+                <div class="drawer-tab-content" id="det-squat">
+                  <div class="fv-details-grid">
+                    <div class="fv-details-chart">
+                      <canvas id="player-fv-chart"></canvas>
+                    </div>
+                    <div class="fv-details-metrics">
+                      <div class="fv-val-card">
+                        <span class="fv-lbl">1RM Stimato (L₀)</span>
+                        <h4 class="fv-val text-success" id="det-fv-1rm">135 kg</h4>
+                      </div>
+                      <div class="fv-val-card">
+                        <span class="fv-lbl">Velocità teorica max (V₀)</span>
+                        <h4 class="fv-val text-info" id="det-fv-v0">1.45 m/s</h4>
+                      </div>
+                      <div class="fv-val-card">
+                        <span class="fv-lbl">Equazione F-V</span>
+                        <span class="fv-val-small" id="det-fv-eq">v = -0.010x + 1.45</span>
+                      </div>
+                      <div class="fv-val-card">
+                        <span class="fv-lbl">Profilo Muscolare</span>
+                        <span class="fv-val-small badge badge-info" id="det-fv-profile-type">Bilanciato</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Squat data points table -->
+                  <div class="card-table-wrapper" style="margin-top: 20px;">
+                    <h4 style="margin-bottom: 10px;">Punti di Profilazione Squat</h4>
+                    <table class="data-table small-table">
+                      <thead>
+                        <tr>
+                          <th>Carico (kg)</th>
+                          <th>Velocità (m/s)</th>
+                        </tr>
+                      </thead>
+                      <tbody id="player-det-squat-table-body">
+                        <!-- Dynamic -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Tab: Test Fisici -->
+                <div class="drawer-tab-content" id="det-tests">
+                  <div class="card-table-wrapper">
+                    <table class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Data</th>
+                          <th>Tipologia Test</th>
+                          <th>Risultato</th>
+                        </tr>
+                      </thead>
+                      <tbody id="player-det-tests-table-body">
+                        <!-- Dynamic -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. DAILY MONITORING VIEW -->
+        <section id="daily-log" class="viewport">
+          <div class="daily-log-header">
+            <div class="date-header">
+              <span>Seleziona Data Monitoraggio:</span>
+              <input type="date" id="daily-log-date" class="input-date-large">
+            </div>
+            <div class="actions" style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px;">
+              <i data-lucide="info" style="color: var(--primary); width: 16px; height: 16px;"></i>
+              <span>Consultazione storica atleti (compilazione via link/portale)</span>
+            </div>
+          </div>
+
+          <div class="daily-log-list" id="daily-log-list">
+            <!-- Dynamic Entry rows for each active player -->
+          </div>
+        </section>
+
+        <!-- 4. FV PROFILE SQUAT VIEW -->
+        <section id="fv-profile" class="viewport">
+          <div class="fv-split-layout">
+            
+            <!-- Left Side: Selection and Inputs -->
+            <div class="fv-control-panel card">
+              <div class="card-header">
+                <h3>Profilazione F-V Squat</h3>
+                <p class="text-muted">Aggiungi e calcola la relazione forza-velocità del giocatore</p>
+              </div>
+              
+              <div class="card-body">
+                <div class="form-group">
+                  <label for="fv-player-select">Seleziona Giocatore</label>
+                  <select id="fv-player-select" class="form-control">
+                    <!-- Loaded dynamically -->
+                  </select>
+                </div>
+
+                <hr class="divider">
+
+                <h4 style="margin-top: 15px; margin-bottom: 10px;">Aggiungi Punto Carico-Velocità</h4>
+                <form id="fv-point-form" class="inline-form">
+                  <div class="form-group">
+                    <label for="fv-load">Carico (kg)</label>
+                    <input type="number" id="fv-load" min="0" max="300" step="1" class="form-control" required placeholder="es. 60">
+                  </div>
+                  <div class="form-group">
+                    <label for="fv-velocity">Velocità Concentrica (m/s)</label>
+                    <input type="number" id="fv-velocity" min="0.1" max="2.5" step="0.01" class="form-control" required placeholder="es. 0.85">
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-icon-only">
+                    <i data-lucide="plus"></i>
+                  </button>
+                </form>
+
+                <hr class="divider">
+
+                <div class="data-points-list-wrapper">
+                  <h4 style="margin-bottom: 10px;">Punti Attivi per la Regressione</h4>
+                  <table class="data-table small-table">
+                    <thead>
+                      <tr>
+                        <th>Carico (kg)</th>
+                        <th>Velocità (m/s)</th>
+                        <th style="width: 60px;">Azione</th>
+                      </tr>
+                    </thead>
+                    <tbody id="fv-active-points-body">
+                      <!-- Dynamic active points -->
+                    </tbody>
+                  </table>
+                  <p class="text-muted small-text" id="fv-min-points-warning" style="margin-top: 8px;">
+                    ⚠️ Inserisci almeno 2 punti (consigliati 3-5) per generare la regressione lineare.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Side: Charts and Results -->
+            <div class="fv-results-panel card">
+              <div class="card-header">
+                <h3>Grafico Forza-Velocità</h3>
+                <p class="text-muted">Retta di regressione lineare e stime biomeccaniche dello Squat</p>
+              </div>
+              <div class="card-body">
+                <div class="fv-metrics-row">
+                  <div class="fv-metric-box">
+                    <span class="label">1RM Stimato (L₀)</span>
+                    <h3 id="fv-est-1rm">- kg</h3>
+                    <span class="subtext">Velocità 0 m/s</span>
+                  </div>
+                  <div class="fv-metric-box">
+                    <span class="label">Velocità Max Teorica (V₀)</span>
+                    <h3 id="fv-est-v0">- m/s</h3>
+                    <span class="subtext">Carico 0 kg</span>
+                  </div>
+                  <div class="fv-metric-box">
+                    <span class="label">Pendenza (m)</span>
+                    <h3 id="fv-est-slope">-</h3>
+                    <span class="subtext" id="fv-profile-type-badge">Inserisci dati</span>
+                  </div>
+                </div>
+
+                <div class="fv-chart-wrapper">
+                  <canvas id="fv-regression-chart"></canvas>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- 5. PHYSICAL TESTS VIEW -->
+        <section id="physical-tests" class="viewport">
+          <div class="tests-layout">
+            <!-- Test Entry Form -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Registra Test Fisico</h3>
+                <p class="text-muted">Seleziona atleta, tipologia e inserisci il valore riscontrato</p>
+              </div>
+              <div class="card-body">
+                <form id="physical-test-form">
+                  <div class="form-row">
+                    <div class="form-group col-6">
+                      <label for="test-player-select">Giocatore</label>
+                      <select id="test-player-select" class="form-control" required>
+                        <!-- Loaded dynamically -->
+                      </select>
+                    </div>
+                    <div class="form-group col-6">
+                      <label for="test-date">Data Test</label>
+                      <input type="date" id="test-date" class="form-control" required>
+                    </div>
+                  </div>
+                  
+                  <div class="form-row" style="margin-top: 15px;">
+                    <div class="form-group col-6">
+                      <label for="test-type-select">Tipologia Test</label>
+                      <select id="test-type-select" class="form-control" required>
+                        <optgroup label="Test di Resistenza & Velocità">
+                          <option value="Yo-Yo IR1">Yo-Yo Intermittent Recovery 1 (Distanza in m)</option>
+                          <option value="Sprint 30m">Sprint 30 metri (Tempo in sec)</option>
+                        </optgroup>
+                        <optgroup label="Test di Salto (Countermovement Jump)">
+                          <option value="CMJ">CMJ a Corpo Libero (Altezza in cm)</option>
+                          <option value="CMJ con Sovraccarico">CMJ con Sovraccarico (Altezza in cm)</option>
+                        </optgroup>
+                        <optgroup label="Test di Salto (Squat Jump)">
+                          <option value="Squat Jump">Squat Jump a Corpo Libero (Altezza in cm)</option>
+                          <option value="Squat Jump con Sovraccarico">Squat Jump con Sovraccarico (Altezza in cm)</option>
+                        </optgroup>
+                      </select>
+                    </div>
+                    
+                    <div class="form-group col-6">
+                      <label for="test-value">Valore Riscontrato</label>
+                      <div class="input-unit-wrapper">
+                        <input type="number" id="test-value" step="0.01" min="0" class="form-control" placeholder="es. 42.5" required>
+                        <span class="input-unit" id="test-unit-label">cm</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="form-row" id="test-jump-row" style="margin-top: 15px; display: none;">
+                    <div class="form-group col-6" id="test-overload-group" style="display: none;">
+                      <label for="test-overload">Sovraccarico Utilizzato (kg)</label>
+                      <input type="number" id="test-overload" step="0.5" min="0" class="form-control" placeholder="es. 8">
+                    </div>
+                    <div class="form-group col-12" id="test-power-group">
+                      <label id="test-power-label" for="test-power">Picco di Potenza (W)</label>
+                      <input type="number" id="test-power" step="1" min="0" class="form-control" placeholder="es. 4200">
+                    </div>
+                  </div>
+
+                  <button type="submit" class="btn btn-primary" style="margin-top: 20px; width: 100%;">
+                    <i data-lucide="check"></i>
+                    <span>Registra Test</span>
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <!-- Test History Table -->
+            <div class="card flex-grow">
+              <div class="card-header">
+                <h3>Storico Test Fisici Squadra</h3>
+                <p class="text-muted">Risultati aggregati di tutti i test registrati</p>
+              </div>
+              <div class="card-body flex-column">
+                <div class="table-filters" style="margin-bottom: 15px;">
+                  <div class="search-box">
+                    <i data-lucide="search"></i>
+                    <input type="text" id="test-history-search" placeholder="Filtra per giocatore...">
+                  </div>
+                  <select id="test-type-filter" class="form-control filter-select">
+                    <option value="">Tutte le tipologie</option>
+                    <option value="Yo-Yo IR1">Yo-Yo IR1</option>
+                    <option value="Sprint 30m">Sprint 30m</option>
+                    <option value="CMJ">CMJ a Corpo Libero</option>
+                    <option value="CMJ con Sovraccarico">CMJ con Sovraccarico</option>
+                    <option value="Squat Jump">Squat Jump a Corpo Libero</option>
+                    <option value="Squat Jump con Sovraccarico">Squat Jump con Sovraccarico</option>
+                  </select>
+                </div>
+                
+                <div class="table-container flex-grow">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Data</th>
+                        <th>Giocatore</th>
+                        <th>Tipologia Test</th>
+                        <th>Valore</th>
+                        <th>Unità</th>
+                        <th style="width: 50px;">Azione</th>
+                      </tr>
+                    </thead>
+                    <tbody id="test-history-body">
+                      <!-- Dynamic entries -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. BACKUP / DATABASE VIEW -->
+        <section id="backup-panel" class="viewport">
+          <div class="backup-grid">
+            <!-- Export Card -->
+            <div class="card">
+              <div class="card-header">
+                <div class="header-icon-title">
+                  <i data-lucide="download" class="text-success"></i>
+                  <h3>Esporta Database</h3>
+                </div>
+                <p class="text-muted">Esporta l'intero database delle sessioni in un file JSON per creare un backup sicuro o caricarlo su un altro dispositivo.</p>
+              </div>
+              <div class="card-body flex-column flex-between">
+                <div class="db-summary-box">
+                  <div class="summary-item">
+                    <span>Giocatori in Rosa</span>
+                    <strong id="back-players-cnt">0</strong>
+                  </div>
+                  <div class="summary-item">
+                    <span>Log Quotidiani</span>
+                    <strong id="back-logs-cnt">0</strong>
+                  </div>
+                  <div class="summary-item">
+                    <span>Test Fisici Registrati</span>
+                    <strong id="back-tests-cnt">0</strong>
+                  </div>
+                </div>
+                <button class="btn btn-success" style="width: 100%;" id="btn-export-db">
+                  <i data-lucide="download-cloud"></i>
+                  <span>Scarica Backup (.json)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Import Card -->
+            <div class="card">
+              <div class="card-header">
+                <div class="header-icon-title">
+                  <i data-lucide="upload" class="text-info"></i>
+                  <h3>Ripristina Database</h3>
+                </div>
+                <p class="text-muted">Seleziona un file JSON esportato in precedenza per caricare lo storico completo degli atleti.</p>
+              </div>
+              <div class="card-body">
+                <div class="upload-zone" id="upload-zone">
+                  <i data-lucide="file-json" class="upload-icon"></i>
+                  <p>Trascina il file backup (.json) qui o fai clic per sfogliare</p>
+                  <input type="file" id="import-db-file" accept=".json" style="display: none;">
+                </div>
+                <div id="import-message" style="margin-top: 10px; display: none;"></div>
+              </div>
+            </div>
+
+            <!-- Reset / System Card -->
+            <div class="card card-alert">
+              <div class="card-header">
+                <div class="header-icon-title text-danger">
+                  <i data-lucide="trash-2"></i>
+                  <h3>Inizializzazione & Reset</h3>
+                </div>
+                <p class="text-muted">Operazioni distruttive di gestione del database locale. Fai attenzione.</p>
+              </div>
+              <div class="card-body flex-column" style="gap: 15px;">
+                <button class="btn btn-warning" id="btn-load-mock" style="width: 100%;">
+                  <i data-lucide="refresh-cw"></i>
+                  <span>Reinizializza con Dati Mock</span>
+                </button>
+                
+                <button class="btn btn-danger" id="btn-clear-db" style="width: 100%;">
+                  <i data-lucide="alert-triangle"></i>
+                  <span>Cancella Tutto (Reset Fabbrica)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Cloud Sync Card -->
+            <div class="card">
+              <div class="card-header">
+                <div class="header-icon-title">
+                  <i data-lucide="cloud" class="text-primary"></i>
+                  <h3>Sincronizzazione Cloud</h3>
+                </div>
+                <p class="text-muted">Collega l'applicazione ad un database online per sincronizzare e condividere i dati degli atleti in tempo reale tra diversi telefoni/PC.</p>
+              </div>
+              <div class="card-body flex-column flex-between" style="gap: 15px; justify-content: space-between;">
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                  <label for="config-cloud-url" style="font-size: 11px;">URL Google Apps Script</label>
+                  <input type="url" id="config-cloud-url" class="form-control" placeholder="Incolla l'URL dello script Web App..." oninput="app.saveCloudUrl()">
+                </div>
+                
+                <div style="display: flex; gap: 8px;">
+                  <button type="button" class="btn btn-secondary" onclick="app.pullFromCloud()" style="flex: 1; padding: 10px 14px; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Forza Ricezione
+                  </button>
+                  <button type="button" class="btn btn-primary" onclick="app.syncToCloud()" style="flex: 1; padding: 10px 14px; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    <i data-lucide="upload-cloud" style="width: 14px; height: 14px;"></i> Forza Invio
+                  </button>
+                </div>
+                
+                <span class="small-text text-muted" id="cloud-sync-status" style="font-size: 11px; text-align: center; margin-top: 10px; display: block;">
+                  Stato: Non configurato
+                </span>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- 6. CARICHI NEUROMUSCOLARI VIEW -->
+        <section id="neuro-loads" class="viewport">
+          <div class="section-actions-bar">
+            <div class="search-box">
+              <i data-lucide="search"></i>
+              <input type="text" id="neuro-search" placeholder="Cerca calciatore..." oninput="app.renderNeuroLoads()">
+            </div>
+          </div>
+
+          <div class="roster-grid" id="neuro-grid">
+            <!-- Dynamic Player Cards -->
+          </div>
+
+          <!-- Drawer Carichi Neuromuscolari -->
+          <div class="drawer" id="neuro-detail-drawer">
+            <div class="drawer-content">
+              <div class="drawer-header">
+                <div class="player-profile-header">
+                  <div class="player-avatar-large" id="neuro-det-avatar">MR</div>
+                  <div>
+                    <h2 id="neuro-det-name">Marco Rossi</h2>
+                    <span class="badge" id="neuro-det-role">Centrocampista</span>
+                  </div>
+                </div>
+                <button class="btn-close" id="btn-close-neuro-drawer">&times;</button>
+              </div>
+              
+              <div class="drawer-body">
+                <!-- Carichi di Lavoro Squat VBT (0.5 m/s e 0.7 m/s) -->
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;" id="neuro-det-vbt-box">
+                  <!-- Dynamic VBT loads -->
+                </div>
+
+                <!-- Jumps list table for CMJ -->
+                <div class="card" style="margin-bottom: 20px;">
+                  <div class="card-header">
+                    <h4>Countermovement Jump (CMJ)</h4>
+                    <p class="text-muted">Evidenziato il miglior salto per Picco di Potenza (W)</p>
+                  </div>
+                  <div class="card-table-wrapper">
+                    <table class="data-table small-table">
+                      <thead>
+                        <tr>
+                          <th>Carico</th>
+                          <th>Altezza (cm)</th>
+                          <th>Picco Potenza (W)</th>
+                          <th>Esito</th>
+                        </tr>
+                      </thead>
+                      <tbody id="neuro-cmj-table-body">
+                        <!-- Dynamic -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Jumps list table for SJ -->
+                <div class="card">
+                  <div class="card-header">
+                    <h4>Squat Jump (SJ)</h4>
+                    <p class="text-muted">Evidenziato il miglior salto per Potenza Media Concentrica (W)</p>
+                  </div>
+                  <div class="card-table-wrapper">
+                    <table class="data-table small-table">
+                      <thead>
+                        <tr>
+                          <th>Carico</th>
+                          <th>Altezza (cm)</th>
+                          <th>Pot. Media Conc. (W)</th>
+                          <th>Esito</th>
+                        </tr>
+                      </thead>
+                      <tbody id="neuro-sj-table-body">
+                        <!-- Dynamic -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 7. CARICHI AEROBICI VIEW -->
+        <section id="aerobic-loads" class="viewport">
+          <div class="section-actions-bar">
+            <div class="search-box">
+              <i data-lucide="search"></i>
+              <input type="text" id="aerobic-search" placeholder="Cerca calciatore..." oninput="app.renderAerobicLoads()">
+            </div>
+          </div>
+
+          <div class="daily-log-list-container" id="aerobic-list" style="display: flex; flex-direction: column; gap: 15px;">
+            <!-- Dynamic Collapsible Player VAM Cards -->
+          </div>
+        </section>
+
+        <!-- 8. PORTALE GIOCATORI VIEW -->
+        <section id="player-portal" class="viewport">
+          <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 25px;">
+            <!-- Option 1: Locker Room Kiosk -->
+            <div class="card" style="padding: 24px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid var(--border-color);">
+              <div>
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 15px;">
+                  <div class="stat-icon bg-success-soft text-success" style="width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: rgba(16, 185, 129, 0.08);">
+                    <i data-lucide="tablet"></i>
+                  </div>
+                  <h3 style="margin: 0; font-size: 16px; color: var(--text-white);">Terminale Fisico (Kiosk Mode)</h3>
+                </div>
+                <p class="text-muted small-text" style="margin-bottom: 20px; font-size: 12px; line-height: 1.5;">
+                  Usa il tuo computer o un tablet posizionato nello spogliatoio. I giocatori selezionano il proprio nome e inseriscono i dati autonomamente. Ideale per l'utilizzo offline.
+                </p>
+              </div>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn btn-primary btn-sm" onclick="app.launchLocalPlayerPortal()">
+                  <i data-lucide="play"></i> Apri Portale Giocatori (Locale)
+                </button>
+              </div>
+            </div>
+
+            <!-- Option 2: Online links configuration -->
+            <div class="card" style="padding: 24px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid var(--border-color);">
+              <div>
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 15px;">
+                  <div class="stat-icon bg-info-soft text-info" style="width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: rgba(59, 130, 246, 0.08);">
+                    <i data-lucide="link"></i>
+                  </div>
+                  <h3 style="margin: 0; font-size: 16px; color: var(--text-white);">Link Invio Dati Giocatori</h3>
+                </div>
+                <p class="text-muted small-text" style="margin-bottom: 15px; font-size: 12px; line-height: 1.5;">
+                  Usa i link diretti del portale (Consigliato: salvataggio automatico nel Cloud in tempo reale) oppure incolla i tuoi link di Google Forms se preferisci scaricare i file CSV.
+                </p>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div>
+                  <label class="small-text text-muted" style="display: block; margin-bottom: 4px; font-size: 10px; text-transform: uppercase;">Link Applicazione per Smartphone</label>
+                  <div style="display: flex; gap: 6px;">
+                    <input type="url" id="config-url-player" class="form-control" style="height: 32px; font-size: 11px; flex-grow: 1;" placeholder="Generazione link..." readonly>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="app.copyPlayerPortalUrl()" style="padding: 0 10px; height: 32px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                      <i data-lucide="copy" style="width: 12px; height: 12px;"></i> Copia Link
+                    </button>
+                  </div>
+                  <span id="local-warning-player" style="color: #f59e0b; font-size: 10px; display: none; margin-top: 4px; line-height: 1.3;">⚠️ Stai visualizzando offline. Il link funzionerà su WhatsApp solo dopo averlo caricato online (es. GitHub Pages).</span>
+                  <span id="cloud-warning-player" style="color: #ef4444; font-size: 11px; display: none; margin-top: 6px; line-height: 1.4; font-weight: 500; background: rgba(239, 68, 68, 0.05); border: 1px dashed rgba(239, 68, 68, 0.2); padding: 8px 12px; border-radius: 6px;">
+                    ⚠️ <strong>Database Cloud non configurato</strong>: I ragazzi sul loro telefono vedranno la rosa dimostrativa di prova (Marco Rossi, ecc.) e non i giocatori dell'AlbinoLeffe. Configura la "Sincronizzazione Cloud" nella scheda "Gestione Database" e fai "Forza Invio" prima di condividere il link. Trovi il codice e le istruzioni nel file <a href="Code.gs" target="_blank" style="color: var(--primary); text-decoration: underline; font-weight: 600;">Code.gs</a> nella cartella del progetto.
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- QR Codes Displays -->
+          <div class="charts-row" style="margin-bottom: 25px; display: grid; grid-template-columns: 1fr; gap: 20px;">
+            <div class="chart-container-card text-center" style="padding: 24px; border: 1px solid var(--border-color); background-color: var(--bg-card); display: flex; flex-direction: column; align-items: center;">
+              <h4 style="color: var(--text-white); margin-bottom: 8px;">QR Code Player App</h4>
+              <p class="text-muted small-text" style="margin-bottom: 20px; font-size: 12px; max-width: 500px;">Fai scansionare questo codice ai giocatori con lo smartphone per installare o aprire la Player App</p>
+              <div style="display: flex; justify-content: center; align-items: center; min-height: 180px;">
+                <div id="qr-player-container" style="display: flex; justify-content: center; align-items: center;">
+                  <span class="text-muted small-text">Generazione QR Code in corso...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CSV Import section -->
+          <div class="card" style="border: 1px solid var(--border-color); background-color: var(--bg-card);">
+            <div class="card-header" style="border-bottom: 1px solid var(--border-color); padding: 16px 24px;">
+              <h3 style="color: var(--text-white); margin: 0;">Importazione Risposte moduli (CSV/Excel)</h3>
+              <p class="text-muted" style="margin: 4px 0 0; font-size: 12px;">Importa le risposte dei moduli scaricate da Google Sheets / Google Forms</p>
+            </div>
+            <div class="card-body" style="padding: 24px;">
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                <!-- Post workout import -->
+                <div>
+                  <h4 style="margin-bottom: 10px; font-size: 14px; color: var(--primary);">Carica Risposte RPE (Post-Allenamento)</h4>
+                  <div class="upload-zone" id="csv-rpe-zone" style="height: 130px; border: 2px dashed var(--border-color); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-radius: 8px;">
+                    <i data-lucide="file-spreadsheet" class="upload-icon" style="width: 32px; height: 32px; color: var(--text-muted); margin-bottom: 8px;"></i>
+                    <p class="small-text text-muted" style="margin: 0; font-size: 12px;">Seleziona o trascina il file CSV...</p>
+                    <input type="file" id="csv-rpe-input" accept=".csv" style="display: none;">
+                  </div>
+                </div>
+                <!-- Morning recovery import -->
+                <div>
+                  <h4 style="margin-bottom: 10px; font-size: 14px; color: var(--primary);">Carica Risposte Recupero (Stato Mattutino)</h4>
+                  <div class="upload-zone" id="csv-recovery-zone" style="height: 130px; border: 2px dashed var(--border-color); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-radius: 8px;">
+                    <i data-lucide="file-spreadsheet" class="upload-icon" style="width: 32px; height: 32px; color: var(--text-muted); margin-bottom: 8px;"></i>
+                    <p class="small-text text-muted" style="margin: 0; font-size: 12px;">Seleziona o trascina il file CSV...</p>
+                    <input type="file" id="csv-recovery-input" accept=".csv" style="display: none;">
+                  </div>
+                </div>
+                <!-- Roster import -->
+                <div>
+                  <h4 style="margin-bottom: 10px; font-size: 14px; color: var(--primary);">Carica Anagrafica Calciatori (Rosa CSV)</h4>
+                  <div class="upload-zone" id="csv-roster-zone" style="height: 130px; border: 2px dashed var(--border-color); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-radius: 8px;">
+                    <i data-lucide="users" class="upload-icon" style="width: 32px; height: 32px; color: var(--text-muted); margin-bottom: 8px;"></i>
+                    <p class="small-text text-muted" style="margin: 0; font-size: 12px;">Seleziona o trascina il file CSV...</p>
+                    <input type="file" id="csv-roster-input" accept=".csv" style="display: none;">
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Column mapping notice -->
+              <div class="alert alert-info" style="margin-top: 20px; font-size: 12px; background: rgba(0, 168, 232, 0.05); border: 1px solid rgba(0, 168, 232, 0.15); border-radius: 6px; padding: 12px 16px; color: var(--text-main);">
+                <strong>💡 Guida all'importazione</strong>:
+                Il file CSV deve contenere i nomi dei giocatori (che verranno accoppiati a quelli registrati nella Rosa) e i relativi dati. 
+                L'applicazione analizzerà le colonne e importerà RPE, Durata, Sonno o DOMS associandoli alla data indicata nel file o a quella odierna.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 9. PROGRAMMAZIONE (SCHEDULE) VIEW -->
+        <section id="schedule-panel" class="viewport">
+          <!-- Calendar Grid Card (Full Width) -->
+          <div class="card" style="border: 1px solid var(--border-color); background-color: var(--bg-card); width: 100%;">
+            <div class="card-header" style="border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; padding: 16px 24px;">
+              <div>
+                <h3 style="color: var(--text-white); margin: 0; font-size: 16px; font-weight: 700;">Calendario degli Impegni</h3>
+                <p class="text-muted" style="margin: 4px 0 0; font-size: 12px;">Clicca su un giorno per pianificare, modificare o eliminare gli eventi dello staff</p>
+              </div>
+              
+              <!-- Month Navigator -->
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <button type="button" class="btn btn-secondary btn-icon-only" onclick="app.prevMonth()" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                  <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i>
+                </button>
+                <span id="calendar-month-year" style="font-weight: 600; color: var(--text-white); min-width: 120px; text-align: center; font-size: 14px;">Mese Anno</span>
+                <button type="button" class="btn btn-secondary btn-icon-only" onclick="app.nextMonth()" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                  <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
+                </button>
+              </div>
+            </div>
+            <div class="card-body" style="padding: 24px;">
+              <!-- Weekdays headers -->
+              <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center; font-weight: 600; font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.5px;">
+                <div>Lun</div>
+                <div>Mar</div>
+                <div>Mer</div>
+                <div>Gio</div>
+                <div>Ven</div>
+                <div>Sab</div>
+                <div>Dom</div>
+              </div>
+              <!-- Days grid -->
+              <div id="calendar-days-grid" class="calendar-days-grid">
+                <!-- Dynamic days -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Chronological List Card -->
+          <div class="card" style="margin-top: 25px; border: 1px solid var(--border-color); background-color: var(--bg-card);">
+            <div class="card-header" style="border-bottom: 1px solid var(--border-color); padding: 16px 24px;">
+              <h3 style="color: var(--text-white); margin: 0; font-size: 16px; font-weight: 700;">Prossimi Impegni Programmatori</h3>
+              <p class="text-muted" style="margin: 4px 0 0; font-size: 12px;">Cronologia dei prossimi eventi inseriti dallo staff</p>
+            </div>
+            <div class="card-table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Ora</th>
+                    <th>Tipo</th>
+                    <th>Attività / Impegno</th>
+                    <th>Obiettivi principali</th>
+                    <th style="width: 120px; text-align: center;">Azione</th>
+                  </tr>
+                </thead>
+                <tbody id="schedule-list-body">
+                  <!-- Dynamic rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Add Player Modal -->
+  <div class="modal" id="player-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-player-title">Aggiungi Calciatore</h3>
+        <button class="btn-close" id="btn-close-modal">&times;</button>
+      </div>
+      <form id="player-form">
+        <input type="hidden" id="modal-player-id">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group col-6">
+              <label for="player-name">Nome e Cognome</label>
+              <input type="text" id="player-name" class="form-control" placeholder="es. Mario Rossi" required>
+            </div>
+            <div class="form-group col-6">
+              <label for="player-role">Ruolo</label>
+              <select id="player-role" class="form-control" required>
+                <option value="Portiere">Portiere</option>
+                <option value="Difensore">Difensore</option>
+                <option value="Centrocampista">Centrocampista</option>
+                <option value="Attaccante">Attaccante</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-row" style="margin-top: 15px;">
+            <div class="form-group col-6">
+              <label for="player-status">Stato Iniziale</label>
+              <select id="player-status" class="form-control" required>
+                <option value="Disponibile">Disponibile</option>
+                <option value="Infortunato">Infortunato</option>
+                <option value="In recupero">In recupero</option>
+              </select>
+            </div>
+            <div class="form-group col-6">
+              <label for="player-dob">Data di Nascita</label>
+              <input type="date" id="player-dob" class="form-control" required>
+            </div>
+          </div>
+
+          <div class="form-row" style="margin-top: 15px;">
+            <div class="form-group col-4">
+              <label for="player-height">Altezza (cm)</label>
+              <input type="number" id="player-height" min="100" max="250" class="form-control" required placeholder="180">
+            </div>
+            <div class="form-group col-4">
+              <label for="player-weight">Peso (kg)</label>
+              <input type="number" id="player-weight" min="40" max="150" class="form-control" required placeholder="75">
+            </div>
+            <div class="form-group col-4">
+              <label for="player-fcmax">FC Max (bpm)</label>
+              <input type="number" id="player-fcmax" min="100" max="230" class="form-control" required placeholder="190">
+            </div>
+          </div>
+
+          <div class="form-row" style="margin-top: 15px;">
+            <div class="form-group col-12">
+              <label for="player-vam">VAM (Velocità Aerobica Massima in km/h)</label>
+              <input type="number" id="player-vam" min="10" max="25" step="0.1" class="form-control" required placeholder="16.5">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Annulla</button>
+          <button type="submit" class="btn btn-primary">Salva Atleta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Event Editor Modal (hidden by default) -->
+  <div class="modal" id="event-modal">
+    <div class="modal-content" style="max-width: 550px;">
+      <div class="modal-header">
+        <h3 id="event-editor-title">Nuovo Impegno</h3>
+        <button class="btn-close" type="button" onclick="app.closeEventModal()">&times;</button>
+      </div>
+      <form id="event-form" onsubmit="app.handleEventSubmit(event)">
+        <div class="modal-body" style="padding: 24px;">
+          <input type="hidden" id="event-id">
+          
+          <div class="form-group" style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 6px;">
+            <label for="event-date">Data Impegno</label>
+            <input type="date" id="event-date" class="form-control" required>
+          </div>
+          
+          <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 15px;">
+            <div class="form-group col-6" style="display: flex; flex-direction: column; gap: 6px; width: 50%;">
+              <label for="event-type">Tipo</label>
+              <select id="event-type" class="form-control" required>
+                <option value="Allenamento">Allenamento</option>
+                <option value="Partita di Campionato">Partita di Campionato</option>
+                <option value="Partita Amichevole">Partita Amichevole</option>
+                <option value="Riposo">Riposo</option>
+                <option value="Altro">Altro / Riunione</option>
+              </select>
+            </div>
+            <div class="form-group col-6" style="display: flex; flex-direction: column; gap: 6px; width: 50%;">
+              <label for="event-time">Ora inizio</label>
+              <input type="time" id="event-time" class="form-control" required value="10:00">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 6px;">
+            <label for="event-title">Titolo / Dettaglio Corto</label>
+            <input type="text" id="event-title" class="form-control" required placeholder="es. Allenamento Forza, U.C. AlbinoLeffe vs Renate...">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 6px;">
+            <label for="event-objectives">Obiettivi del Giorno</label>
+            <textarea id="event-objectives" class="form-control" style="height: 90px; resize: none; font-size: 13px; line-height: 1.5; padding: 10px;" placeholder="Inserisci gli obiettivi tattici/fisici del giorno..."></textarea>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 5px; display: flex; flex-direction: column; gap: 6px;">
+            <label for="event-workouts">Programma / Lavori Proposti</label>
+            <textarea id="event-workouts" class="form-control" style="height: 140px; resize: none; font-size: 13px; line-height: 1.5; padding: 10px;" placeholder="Elenca i lavori proposti (es. riscaldamento, tattica, corsa)..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 12px;">
+          <button type="button" id="btn-delete-event" class="btn" onclick="app.handleEventDelete()" style="display: none; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.15); padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; align-items: center; gap: 6px;">
+            <i data-lucide="trash-2" style="width: 14px; height: 14px; display: inline-block;"></i> Elimina
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="app.closeEventModal()">Annulla</button>
+          <button type="submit" class="btn btn-primary">
+            <i data-lucide="save" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i> Salva
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Kiosk Mode Overlay (hidden by default) -->
+  <div id="kiosk-overlay" style="z-index: 2000; background: var(--bg-primary); display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; overflow-y: auto; padding: 20px;">
+    <div style="width: 100%; max-width: 600px; padding: 40px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; display: flex; flex-direction: column; align-items: center; position: relative;">
+      <!-- Club header -->
+      <img src="albinoleffe_logo.png" style="width: 60px; height: 60px; object-fit: contain; margin-bottom: 15px; filter: drop-shadow(0 2px 8px rgba(0,168,232,0.4));">
+      <h2 style="color: var(--text-white); margin: 0 0 5px;" id="kiosk-title">Terminale Post-Allenamento</h2>
+      <p class="text-muted" style="margin: 0 0 10px; font-size: 13px;" id="kiosk-subtitle">Seleziona il tuo nome per registrare l'RPE</p>
+      <span id="kiosk-cloud-status" style="font-size: 10px; color: var(--text-muted); margin-bottom: 25px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Connessione al database...</span>
+
+      <!-- Step 1: Select Player -->
+      <div id="kiosk-step-player" style="width: 100%; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-height: 350px; overflow-y: auto; padding-right: 5px;" id="kiosk-players-list">
+          <!-- Dynamic players buttons -->
+        </div>
+      </div>
+
+      <!-- Step 2: Input Metrics -->
+      <div id="kiosk-step-metrics" style="width: 100%; display: none;">
+        <h4 style="margin: 0 0 20px; text-align: center; color: var(--primary); font-size: 18px;" id="kiosk-selected-player-name">Marco Rossi</h4>
+        
+        <form id="kiosk-metrics-form" onsubmit="app.handleKioskSubmit(event)">
+          <div id="kiosk-fields-container" style="display: flex; flex-direction: column; gap: 15px;">
+            <!-- Dynamic fields depending on mode -->
+          </div>
+          
+          <div style="display: flex; gap: 15px; margin-top: 25px;">
+            <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="app.kioskBack()">Indietro</button>
+            <button type="submit" class="btn btn-primary" style="flex: 2;">Invia Dati</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Step 3: Success message -->
+      <div id="kiosk-step-success" style="width: 100%; display: none; text-align: center; padding: 40px 0;">
+        <div class="stat-icon bg-success-soft text-success" style="width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; background: rgba(16, 185, 129, 0.08);">
+          <i data-lucide="check" style="width: 32px; height: 32px;"></i>
+        </div>
+        <h3 style="color: var(--text-white); margin: 0 0 10px; font-size: 20px;">Dati Registrati con Successo!</h3>
+        <p class="text-muted" style="margin: 0; font-size: 13px;">Il terminale si resetterà tra pochi secondi per il prossimo giocatore...</p>
+      </div>
+
+      <!-- Hidden Coach Exit button -->
+      <button id="kiosk-exit-btn" style="position: absolute; bottom: 15px; right: 20px; background: transparent; border: none; color: var(--text-muted); font-size: 11px; cursor: pointer; text-decoration: underline;" onclick="app.exitKiosk()">
+        Esci da Modalità Giocatore
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- App scripts -->
+  <script src="mock-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
