@@ -3365,6 +3365,15 @@ class AthleteHubApp {
       .then(data => {
         // Validazione dei dati cloud
         if (data && Array.isArray(data.players) && Array.isArray(data.dailyLogs)) {
+          // Protezione da sovrascrittura: se il cloud è vuoto ma in locale ci sono già giocatori,
+          // inizializziamo il cloud con i dati locali invece di azzerare l'applicazione.
+          if (data.players.length === 0 && this.db && Array.isArray(this.db.players) && this.db.players.length > 0) {
+            console.log("Database cloud vuoto rilevato. Inizializzazione con i dati locali.");
+            this.syncToCloud();
+            this.showToast("Cloud inizializzato con i tuoi dati locali!");
+            return;
+          }
+
           this.db = data;
           this.saveDatabase(true); // Salva localmente saltando il push al cloud
           
@@ -3406,10 +3415,71 @@ class AthleteHubApp {
 
     const statusEl = document.getElementById('cloud-sync-status');
     if (statusEl) {
-      statusEl.textContent = 'Stato: Invio dati in corso...';
+      statusEl.textContent = 'Stato: Allineamento e invio dati...';
     }
 
-    // Usiamo POST con mode 'no-cors' per inviare i dati aggirando i limiti di CORS di Apps Script
+    // 1. Recupera prima l'ultimo database dal cloud per non sovrascrivere le risposte inviate dai ragazzi
+    fetch(this.cloudUrl)
+      .then(res => {
+        if (!res.ok) throw new Error("Impossibile recuperare i dati cloud per l'allineamento.");
+        return res.json();
+      })
+      .then(cloudDb => {
+        if (cloudDb && Array.isArray(cloudDb.dailyLogs)) {
+          // Allineamento dei dailyLogs: uniamo i log del cloud con quelli locali
+          const localLogsMap = new Map(this.db.dailyLogs.map(l => [`${l.playerId}_${l.date}`, l]));
+          
+          cloudDb.dailyLogs.forEach(cloudLog => {
+            const key = `${cloudLog.playerId}_${cloudLog.date}`;
+            const localLog = localLogsMap.get(key);
+            
+            if (!localLog) {
+              // Se il log del ragazzo è presente nel cloud ma non in locale, lo aggiungiamo in locale
+              this.db.dailyLogs.push(cloudLog);
+            } else {
+              // Se è presente in entrambi, importiamo i valori del ragazzo se compilati
+              if (cloudLog.rpe > 0) localLog.rpe = cloudLog.rpe;
+              if (cloudLog.duration > 0) localLog.duration = cloudLog.duration;
+              if (cloudLog.cmjHeight > 0) localLog.cmjHeight = cloudLog.cmjHeight;
+              if (cloudLog.rsi > 0) localLog.rsi = cloudLog.rsi;
+              if (cloudLog.sleepDuration > 0) localLog.sleepDuration = cloudLog.sleepDuration;
+              if (cloudLog.sleepQuality > 0) localLog.sleepQuality = cloudLog.sleepQuality;
+              if (cloudLog.doms > 0) localLog.doms = cloudLog.doms;
+              if (cloudLog.domsNotes) localLog.domsNotes = cloudLog.domsNotes;
+              if (cloudLog.restingHR > 0) localLog.restingHR = cloudLog.restingHR;
+              if (cloudLog.sessionHRMax > 0) localLog.sessionHRMax = cloudLog.sessionHRMax;
+            }
+          });
+          
+          // Salva localmente il database allineato (senza rifare il push al cloud per evitare loop)
+          localStorage.setItem('soccer_team_db', JSON.stringify(this.db));
+        }
+
+        // 2. Esegui il POST del database allineato
+        return fetch(this.cloudUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(this.db)
+        });
+      })
+      .then(() => {
+        console.log("Database allineato e sincronizzato in cloud.");
+        if (statusEl) {
+          const timeStr = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          statusEl.innerHTML = `<span style="color: #10b981; font-weight: 700;">🟢 Sincronizzato alle ${timeStr}</span>`;
+        }
+      })
+      .catch(err => {
+        console.error("Errore allineamento in push, provo invio diretto:", err);
+        this.directSyncToCloud();
+      });
+  }
+
+  directSyncToCloud() {
+    const statusEl = document.getElementById('cloud-sync-status');
     fetch(this.cloudUrl, {
       method: 'POST',
       mode: 'no-cors',
@@ -3419,14 +3489,14 @@ class AthleteHubApp {
       body: JSON.stringify(this.db)
     })
     .then(() => {
-      console.log("Database sincronizzato in cloud via Apps Script.");
+      console.log("Database inviato direttamente in cloud.");
       if (statusEl) {
         const timeStr = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         statusEl.innerHTML = `<span style="color: #10b981; font-weight: 700;">🟢 Sincronizzato alle ${timeStr}</span>`;
       }
     })
     .catch(err => {
-      console.error("Errore sinc cloud (push):", err);
+      console.error("Errore invio diretto cloud:", err);
       if (statusEl) {
         statusEl.innerHTML = `<span style="color: #ef4444; font-weight: 700;">🔴 Errore invio dati</span>`;
       }
