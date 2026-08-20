@@ -1024,7 +1024,7 @@ class AthleteHubApp {
     tableBody.innerHTML = '';
 
     if (fvPoints.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="2" class="text-muted text-center">Nessun punto di profilazione inserito.</td></tr>`;
+      tableBody.innerHTML = `<tr><td colspan="3" class="text-muted text-center">Nessun punto di profilazione inserito.</td></tr>`;
       
       // Clear regression chart if any
       if (this.charts['player-fv-chart']) this.charts['player-fv-chart'].destroy();
@@ -1032,12 +1032,16 @@ class AthleteHubApp {
       document.getElementById('det-fv-v0').textContent = '- m/s';
       document.getElementById('det-fv-eq').textContent = '-';
       document.getElementById('det-fv-profile-type').textContent = 'Nessun dato';
+      document.getElementById('det-fv-r2').textContent = '-';
+      document.getElementById('det-fv-load030').textContent = '- kg';
+      document.getElementById('det-fv-ppo').textContent = '- W / - kg';
       return;
     }
 
     fvPoints.sort((a,b) => a.load - b.load).forEach(pt => {
+      const power = Math.round(pt.load * 9.81 * pt.velocity);
       const row = document.createElement('tr');
-      row.innerHTML = `<td>${pt.load} kg</td><td>${pt.velocity} m/s</td>`;
+      row.innerHTML = `<td>${pt.load} kg</td><td>${pt.velocity} m/s</td><td>${power} W</td>`;
       tableBody.appendChild(row);
     });
 
@@ -1047,6 +1051,9 @@ class AthleteHubApp {
       document.getElementById('det-fv-1rm').textContent = `${Math.round(reg.l0)} kg`;
       document.getElementById('det-fv-v0').textContent = `${Math.round(reg.v0 * 100) / 100} m/s`;
       document.getElementById('det-fv-eq').textContent = `v = ${Math.round(reg.m * 1000) / 1000}x + ${Math.round(reg.q * 100) / 100}`;
+      document.getElementById('det-fv-r2').textContent = `${Math.round(reg.r2 * 1000) / 1000}`;
+      document.getElementById('det-fv-load030').textContent = `${Math.round(reg.loadAt030)} kg`;
+      document.getElementById('det-fv-ppo').textContent = `${Math.round(reg.ppo)} W / ${reg.loadAtPpo} kg`;
       
       // Profile type classification
       const profileBadge = document.getElementById('det-fv-profile-type');
@@ -1464,6 +1471,11 @@ class AthleteHubApp {
     // Reset results labels to default empty
     document.getElementById('fv-est-1rm').textContent = '- kg';
     document.getElementById('fv-est-v0').textContent = '- m/s';
+    document.getElementById('fv-est-r2').textContent = '-';
+    document.getElementById('fv-est-load030').textContent = '- kg';
+    document.getElementById('fv-est-ppo').textContent = '- W';
+    document.getElementById('fv-est-load-ppo').textContent = 'al carico di - kg';
+    
     const slopeBadge = document.getElementById('fv-est-slope');
     slopeBadge.textContent = '-';
     
@@ -1472,7 +1484,7 @@ class AthleteHubApp {
     profileType.className = 'subtext';
 
     if (points.length === 0) {
-      pointsTable.innerHTML = `<tr><td colspan="3" class="text-muted text-center">Nessun punto di prova registrato per questo atleta.</td></tr>`;
+      pointsTable.innerHTML = `<tr><td colspan="4" class="text-muted text-center">Nessun punto di prova registrato per questo atleta.</td></tr>`;
       document.getElementById('fv-min-points-warning').style.display = 'block';
       if (this.charts['fv-regression-chart']) this.charts['fv-regression-chart'].destroy();
       return;
@@ -1481,10 +1493,12 @@ class AthleteHubApp {
     // Sort and display points
     const sortedPoints = [...points].sort((a,b) => a.load - b.load);
     sortedPoints.forEach(pt => {
+      const power = Math.round(pt.load * 9.81 * pt.velocity);
       const row = document.createElement('tr');
       row.innerHTML = `
         <td><strong>${pt.load} kg</strong></td>
         <td><strong>${pt.velocity} m/s</strong></td>
+        <td><strong>${power} W</strong></td>
         <td>
           <button class="btn btn-danger btn-icon-only" style="width: 28px; height: 28px;" onclick="app.deleteFvPoint('${playerId}', ${pt.load})">
             &times;
@@ -1508,6 +1522,10 @@ class AthleteHubApp {
       document.getElementById('fv-est-1rm').textContent = `${Math.round(reg.l0)} kg`;
       document.getElementById('fv-est-v0').textContent = `${Math.round(reg.v0 * 100) / 100} m/s`;
       slopeBadge.textContent = `${Math.round(reg.m * 1000) / 1000}`;
+      document.getElementById('fv-est-r2').textContent = `${Math.round(reg.r2 * 1000) / 1000}`;
+      document.getElementById('fv-est-load030').textContent = `${Math.round(reg.loadAt030)} kg`;
+      document.getElementById('fv-est-ppo').textContent = `${Math.round(reg.ppo)} W`;
+      document.getElementById('fv-est-load-ppo').textContent = `al carico di ${reg.loadAtPpo} kg`;
       
       // Slope evaluation
       if (reg.m < -0.011) {
@@ -1570,26 +1588,51 @@ class AthleteHubApp {
     let sumY = 0;
     let sumXY = 0;
     let sumXX = 0;
+    let sumYY = 0;
+
+    let ppo = 0;
+    let loadAtPpo = 0;
 
     for (let i = 0; i < n; i++) {
       const x = points[i].load;
       const y = points[i].velocity;
+      const power = x * 9.81 * y;
+      
+      if (power > ppo) {
+        ppo = power;
+        loadAtPpo = x;
+      }
+
       sumX += x;
       sumY += y;
       sumXY += x * y;
       sumXX += x * x;
+      sumYY += y * y;
     }
 
-    const denominator = n * sumXX - sumX * sumX;
-    if (denominator === 0) return null;
+    const denominatorX = n * sumXX - sumX * sumX;
+    const denominatorY = n * sumYY - sumY * sumY;
+    if (denominatorX === 0) return null;
 
-    const m = (n * sumXY - sumX * sumY) / denominator;
+    const m = (n * sumXY - sumX * sumY) / denominatorX;
     const q = (sumY - m * sumX) / n;
 
     const v0 = q; 
     const l0 = -q / m; // estimated 1RM when velocity = 0
 
-    return { m, q, v0, l0 };
+    // R2 = r^2
+    let r2 = 0;
+    if (denominatorY > 0) {
+      const num = n * sumXY - sumX * sumY;
+      const den = Math.sqrt(denominatorX * denominatorY);
+      const r = num / den;
+      r2 = r * r;
+    }
+
+    // Carico stimato a 0.30 m/s
+    const loadAt030 = (0.30 - q) / m;
+
+    return { m, q, v0, l0, r2, loadAt030, ppo, loadAtPpo };
   }
 
   drawFvRegressionChart(canvasId, points, reg) {

@@ -1146,35 +1146,89 @@ body {
 
 .fv-metrics-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
 }
 
 .fv-metric-box {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
-  padding: 16px;
+  padding: 12px 8px;
   border-radius: var(--radius-md);
   text-align: center;
+  box-shadow: var(--shadow-sm);
 }
 
 .fv-metric-box .label {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
   text-transform: uppercase;
+  font-weight: 500;
 }
 
 .fv-metric-box h3 {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text-white);
-  margin: 6px 0;
+  margin: 4px 0;
 }
 
 .fv-metric-box .subtext {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
+}
+
+/* Player details Squat F-V tab styling */
+.fv-details-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 20px;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .fv-details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fv-details-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.fv-val-card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 10px;
+  border-radius: var(--radius-md);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.fv-lbl {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+  font-weight: 500;
+}
+
+.fv-val {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 1px 0;
+}
+
+.fv-val-small {
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .fv-chart-wrapper {

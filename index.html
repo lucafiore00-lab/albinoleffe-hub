@@ -378,19 +378,31 @@
                     <div class="fv-details-metrics">
                       <div class="fv-val-card">
                         <span class="fv-lbl">1RM Stimato (L₀)</span>
-                        <h4 class="fv-val text-success" id="det-fv-1rm">135 kg</h4>
+                        <h4 class="fv-val text-success" id="det-fv-1rm">- kg</h4>
                       </div>
                       <div class="fv-val-card">
                         <span class="fv-lbl">Velocità teorica max (V₀)</span>
-                        <h4 class="fv-val text-info" id="det-fv-v0">1.45 m/s</h4>
+                        <h4 class="fv-val text-info" id="det-fv-v0">- m/s</h4>
                       </div>
                       <div class="fv-val-card">
                         <span class="fv-lbl">Equazione F-V</span>
-                        <span class="fv-val-small" id="det-fv-eq">v = -0.010x + 1.45</span>
+                        <span class="fv-val-small" id="det-fv-eq">-</span>
                       </div>
                       <div class="fv-val-card">
                         <span class="fv-lbl">Profilo Muscolare</span>
                         <span class="fv-val-small badge badge-info" id="det-fv-profile-type">Bilanciato</span>
+                      </div>
+                      <div class="fv-val-card">
+                        <span class="fv-lbl">Affidabilità (R²)</span>
+                        <span class="fv-val-small text-warning" id="det-fv-r2">-</span>
+                      </div>
+                      <div class="fv-val-card">
+                        <span class="fv-lbl">Carico a 0.30 m/s</span>
+                        <span class="fv-val-small text-primary" id="det-fv-load030">- kg</span>
+                      </div>
+                      <div class="fv-val-card" style="grid-column: span 2;">
+                        <span class="fv-lbl">Max Potenza / Carico</span>
+                        <span class="fv-val-small" id="det-fv-ppo">- W / - kg</span>
                       </div>
                     </div>
                   </div>
@@ -403,6 +415,7 @@
                         <tr>
                           <th>Carico (kg)</th>
                           <th>Velocità (m/s)</th>
+                          <th>Potenza (W)</th>
                         </tr>
                       </thead>
                       <tbody id="player-det-squat-table-body">
@@ -490,24 +503,25 @@
 
                 <hr class="divider">
 
-                <div class="data-points-list-wrapper">
-                  <h4 style="margin-bottom: 10px;">Punti Attivi per la Regressione</h4>
-                  <table class="data-table small-table">
-                    <thead>
-                      <tr>
-                        <th>Carico (kg)</th>
-                        <th>Velocità (m/s)</th>
-                        <th style="width: 60px;">Azione</th>
-                      </tr>
-                    </thead>
-                    <tbody id="fv-active-points-body">
-                      <!-- Dynamic active points -->
-                    </tbody>
-                  </table>
-                  <p class="text-muted small-text" id="fv-min-points-warning" style="margin-top: 8px;">
-                    ⚠️ Inserisci almeno 2 punti (consigliati 3-5) per generare la regressione lineare.
-                  </p>
-                </div>
+                  <div class="data-points-list-wrapper">
+                    <h4 style="margin-bottom: 10px;">Punti Attivi per la Regressione</h4>
+                    <table class="data-table small-table">
+                      <thead>
+                        <tr>
+                          <th>Carico (kg)</th>
+                          <th>Velocità (m/s)</th>
+                          <th>Potenza (W)</th>
+                          <th style="width: 60px;">Azione</th>
+                        </tr>
+                      </thead>
+                      <tbody id="fv-active-points-body">
+                        <!-- Dynamic active points -->
+                      </tbody>
+                    </table>
+                    <p class="text-muted small-text" id="fv-min-points-warning" style="margin-top: 8px;">
+                      ⚠️ Inserisci almeno 2 punti (consigliati 3-5) per generare la regressione lineare.
+                    </p>
+                  </div>
               </div>
             </div>
 
@@ -525,7 +539,7 @@
                     <span class="subtext">Velocità 0 m/s</span>
                   </div>
                   <div class="fv-metric-box">
-                    <span class="label">Velocità Max Teorica (V₀)</span>
+                    <span class="label">Velocità Max (V₀)</span>
                     <h3 id="fv-est-v0">- m/s</h3>
                     <span class="subtext">Carico 0 kg</span>
                   </div>
@@ -533,6 +547,21 @@
                     <span class="label">Pendenza (m)</span>
                     <h3 id="fv-est-slope">-</h3>
                     <span class="subtext" id="fv-profile-type-badge">Inserisci dati</span>
+                  </div>
+                  <div class="fv-metric-box">
+                    <span class="label">Affidabilità (R²)</span>
+                    <h3 id="fv-est-r2">-</h3>
+                    <span class="subtext" id="fv-est-r2-eval">Attendibilità test</span>
+                  </div>
+                  <div class="fv-metric-box">
+                    <span class="label">Carico a 0.30 m/s</span>
+                    <h3 id="fv-est-load030">- kg</h3>
+                    <span class="subtext">Soglia velocità</span>
+                  </div>
+                  <div class="fv-metric-box">
+                    <span class="label">PPO Max Potenza</span>
+                    <h3 id="fv-est-ppo">- W</h3>
+                    <span class="subtext" id="fv-est-load-ppo">al carico di - kg</span>
                   </div>
                 </div>
 
