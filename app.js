@@ -1033,7 +1033,8 @@ class AthleteHubApp {
       document.getElementById('det-fv-eq').textContent = '-';
       document.getElementById('det-fv-profile-type').textContent = 'Nessun dato';
       document.getElementById('det-fv-r2').textContent = '-';
-      document.getElementById('det-fv-load030').textContent = '- kg';
+      const l0El = document.getElementById('det-fv-l0');
+      if (l0El) l0El.textContent = '- kg';
       document.getElementById('det-fv-ppo').textContent = '- W / - kg';
       return;
     }
@@ -1048,12 +1049,14 @@ class AthleteHubApp {
     const reg = this.calculateLinearRegression(fvPoints);
     
     if (reg) {
-      document.getElementById('det-fv-1rm').textContent = `${Math.round(reg.l0)} kg`;
+      // 1RM Allenabile reale a 0.30 m/s (soglia minima di velocita MVT)
+      document.getElementById('det-fv-1rm').textContent = `${Math.round(reg.loadAt030)} kg`;
       document.getElementById('det-fv-v0').textContent = `${Math.round(reg.v0 * 100) / 100} m/s`;
       document.getElementById('det-fv-eq').textContent = `v = ${Math.round(reg.m * 1000) / 1000}x + ${Math.round(reg.q * 100) / 100}`;
       document.getElementById('det-fv-r2').textContent = `${Math.round(reg.r2 * 1000) / 1000}`;
-      document.getElementById('det-fv-load030').textContent = `${Math.round(reg.loadAt030)} kg`;
-      document.getElementById('det-fv-ppo').textContent = `${Math.round(reg.ppo)} W / ${reg.loadAtPpo} kg`;
+      const l0El = document.getElementById('det-fv-l0');
+      if (l0El) l0El.textContent = `${Math.round(reg.l0)} kg`;
+      document.getElementById('det-fv-ppo').textContent = `${Math.round(reg.ppo)} W al carico di ${reg.loadAtPpo} kg`;
       
       // Profile type classification
       const profileBadge = document.getElementById('det-fv-profile-type');
@@ -1472,7 +1475,8 @@ class AthleteHubApp {
     document.getElementById('fv-est-1rm').textContent = '- kg';
     document.getElementById('fv-est-v0').textContent = '- m/s';
     document.getElementById('fv-est-r2').textContent = '-';
-    document.getElementById('fv-est-load030').textContent = '- kg';
+    const l0El = document.getElementById('fv-est-l0');
+    if (l0El) l0El.textContent = '- kg';
     document.getElementById('fv-est-ppo').textContent = '- W';
     document.getElementById('fv-est-load-ppo').textContent = 'al carico di - kg';
     
@@ -1519,11 +1523,13 @@ class AthleteHubApp {
     // CALCULATE BIOMECHANICAL COEFFICIENTS
     const reg = this.calculateLinearRegression(points);
     if (reg) {
-      document.getElementById('fv-est-1rm').textContent = `${Math.round(reg.l0)} kg`;
+      // 1RM Allenabile reale a 0.30 m/s (soglia minima di velocita MVT)
+      document.getElementById('fv-est-1rm').textContent = `${Math.round(reg.loadAt030)} kg`;
       document.getElementById('fv-est-v0').textContent = `${Math.round(reg.v0 * 100) / 100} m/s`;
       slopeBadge.textContent = `${Math.round(reg.m * 1000) / 1000}`;
       document.getElementById('fv-est-r2').textContent = `${Math.round(reg.r2 * 1000) / 1000}`;
-      document.getElementById('fv-est-load030').textContent = `${Math.round(reg.loadAt030)} kg`;
+      const l0El = document.getElementById('fv-est-l0');
+      if (l0El) l0El.textContent = `${Math.round(reg.l0)} kg`;
       document.getElementById('fv-est-ppo').textContent = `${Math.round(reg.ppo)} W`;
       document.getElementById('fv-est-load-ppo').textContent = `al carico di ${reg.loadAtPpo} kg`;
       
@@ -1641,24 +1647,47 @@ class AthleteHubApp {
       this.charts[canvasId].destroy();
     }
 
-    // Sort points by load for scatter drawing
-    const scatterPoints = points.map(pt => ({ x: pt.load, y: pt.velocity }));
+    // Ordina i punti per carico crescente
+    const sortedPoints = [...points].sort((a,b) => a.load - b.load);
+    const scatterPoints = sortedPoints.map(pt => ({ x: pt.load, y: pt.velocity }));
     
-    // Generate regression line endpoints
-    const maxValX = Math.max(reg.l0 * 1.1, Math.max(...points.map(p => p.load)) * 1.2);
+    // Estremi della retta di regressione F-V (da carico 0 a L0)
+    const maxValX = Math.max(reg.l0 * 1.08, Math.max(...points.map(p => p.load)) * 1.15);
     const linePoints = [
-      { x: 0, y: reg.v0 },
-      { x: reg.l0, y: 0 },
-      { x: maxValX, y: reg.m * maxValX + reg.q } // extend line
-    ].filter(p => p.y >= 0); // only draw values above velocity=0
+      { x: 0, y: Math.round(reg.v0 * 100) / 100 },
+      { x: Math.round(reg.l0 * 10) / 10, y: 0 }
+    ];
+
+    // Punti di potenza misurati per ciascuna serie di prova (W = Carico * 9.81 * Velocita)
+    const scatterPower = sortedPoints.map(pt => ({
+      x: pt.load,
+      y: Math.round(pt.load * 9.81 * pt.velocity)
+    }));
+
+    // Curva di potenza teorica parabolica P(x) = x * 9.81 * (m*x + q)
+    const curvePower = [];
+    const numSteps = 30;
+    const curveLimitX = Math.max(reg.l0, ...points.map(p => p.load));
+    for (let i = 0; i <= numSteps; i++) {
+      const load = (curveLimitX / numSteps) * i;
+      const v = reg.m * load + reg.q;
+      if (v >= 0) {
+        const p = load * 9.81 * v;
+        curvePower.push({ x: Math.round(load * 10) / 10, y: Math.round(p) });
+      }
+    }
+
+    // Massimo per scala asse Potenza
+    const maxPowerFound = Math.max(reg.ppo || 0, ...scatterPower.map(p => p.y), ...curvePower.map(p => p.y), 100);
 
     this.charts[canvasId] = new Chart(ctx, {
       type: 'scatter',
       data: {
         datasets: [
           {
-            label: 'Prove Misurate (Punti)',
+            label: 'Velocità Misurata (m/s)',
             data: scatterPoints,
+            yAxisID: 'y',
             backgroundColor: '#00a8e8',
             borderColor: '#008cc2',
             borderWidth: 2,
@@ -1666,40 +1695,98 @@ class AthleteHubApp {
             pointHoverRadius: 8
           },
           {
-            label: 'Retta F-V regressione',
+            label: 'Retta F-V (Regressione)',
             data: linePoints,
             type: 'line',
-            borderColor: '#1e40af',
+            yAxisID: 'y',
+            borderColor: '#38bdf8',
             borderWidth: 2,
-            borderDash: [2, 2],
+            borderDash: [5, 4],
             pointRadius: 0,
             fill: false,
             showLine: true
+          },
+          {
+            label: 'Curva Potenza P(L) (W)',
+            data: curvePower,
+            type: 'line',
+            yAxisID: 'y1',
+            borderColor: '#f59e0b',
+            borderWidth: 2.5,
+            tension: 0.35,
+            pointRadius: 0,
+            fill: false,
+            showLine: true
+          },
+          {
+            label: 'Potenza Misurata (W)',
+            data: scatterPower,
+            yAxisID: 'y1',
+            backgroundColor: '#f59e0b',
+            borderColor: '#d97706',
+            borderWidth: 2,
+            pointRadius: 5,
+            pointHoverRadius: 7
           }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        interaction: {
+          mode: 'nearest',
+          intersect: false
+        },
         plugins: {
-          legend: { labels: { color: '#f3f4f6', font: { family: 'Outfit' } } }
+          legend: {
+            labels: {
+              color: '#f3f4f6',
+              font: { family: 'Outfit', size: 11 },
+              usePointStyle: true,
+              boxWidth: 8
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const dsLabel = context.dataset.label || '';
+                const xVal = context.parsed.x;
+                const yVal = context.parsed.y;
+                if (context.dataset.yAxisID === 'y1') {
+                  return `${dsLabel}: ${yVal} W @ ${xVal} kg`;
+                }
+                return `${dsLabel}: ${yVal} m/s @ ${xVal} kg`;
+              }
+            }
+          }
         },
         scales: {
           x: {
             type: 'linear',
             position: 'bottom',
-            title: { display: true, text: 'Carico / Forza (kg)', color: '#f3f4f6', font: { family: 'Outfit' } },
+            title: { display: true, text: 'Carico (kg)', color: '#f3f4f6', font: { family: 'Outfit' } },
             ticks: { color: '#9ca3af', font: { family: 'Outfit' } },
-            grid: { color: 'rgba(255,255,255,0.05)' },
+            grid: { color: 'rgba(255,255,255,0.06)' },
             min: 0,
-            max: Math.round(reg.l0 * 1.15)
+            max: Math.round(maxValX)
           },
           y: {
-            title: { display: true, text: 'Velocità Concentrica Media (m/s)', color: '#f3f4f6', font: { family: 'Outfit' } },
-            ticks: { color: '#9ca3af', font: { family: 'Outfit' } },
-            grid: { color: 'rgba(255,255,255,0.05)' },
+            type: 'linear',
+            position: 'left',
+            title: { display: true, text: 'Velocità (m/s)', color: '#38bdf8', font: { family: 'Outfit', weight: 'bold' } },
+            ticks: { color: '#38bdf8', font: { family: 'Outfit' } },
+            grid: { color: 'rgba(255,255,255,0.06)' },
             min: 0,
             max: Math.round((reg.v0 * 1.15) * 10) / 10
+          },
+          y1: {
+            type: 'linear',
+            position: 'right',
+            title: { display: true, text: 'Potenza (Watt)', color: '#f59e0b', font: { family: 'Outfit', weight: 'bold' } },
+            ticks: { color: '#f59e0b', font: { family: 'Outfit' } },
+            grid: { drawOnChartArea: false },
+            min: 0,
+            max: Math.round(maxPowerFound * 1.25)
           }
         }
       }

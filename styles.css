@@ -1231,9 +1231,15 @@ body {
   font-weight: 600;
 }
 
+.fv-details-chart {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}
+
 .fv-chart-wrapper {
   position: relative;
-  height: 350px;
+  height: 380px;
   width: 100%;
 }
 

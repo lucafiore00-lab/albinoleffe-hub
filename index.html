@@ -377,12 +377,14 @@
                     </div>
                     <div class="fv-details-metrics">
                       <div class="fv-val-card">
-                        <span class="fv-lbl">1RM Stimato (L₀)</span>
+                        <span class="fv-lbl">1RM Allenabile</span>
                         <h4 class="fv-val text-success" id="det-fv-1rm">- kg</h4>
+                        <span class="subtext" style="font-size: 10px; color: var(--text-muted);">Soglia 0.30 m/s</span>
                       </div>
                       <div class="fv-val-card">
                         <span class="fv-lbl">Velocità teorica max (V₀)</span>
                         <h4 class="fv-val text-info" id="det-fv-v0">- m/s</h4>
+                        <span class="subtext" style="font-size: 10px; color: var(--text-muted);">Carico 0 kg</span>
                       </div>
                       <div class="fv-val-card">
                         <span class="fv-lbl">Equazione F-V</span>
@@ -397,12 +399,12 @@
                         <span class="fv-val-small text-warning" id="det-fv-r2">-</span>
                       </div>
                       <div class="fv-val-card">
-                        <span class="fv-lbl">Carico a 0.30 m/s</span>
-                        <span class="fv-val-small text-primary" id="det-fv-load030">- kg</span>
+                        <span class="fv-lbl">Forza Teorica (L₀)</span>
+                        <span class="fv-val-small text-muted" id="det-fv-l0">- kg</span>
                       </div>
                       <div class="fv-val-card" style="grid-column: span 2;">
-                        <span class="fv-lbl">Max Potenza / Carico</span>
-                        <span class="fv-val-small" id="det-fv-ppo">- W / - kg</span>
+                        <span class="fv-lbl">Max Potenza (PPO)</span>
+                        <span class="fv-val-small text-warning" id="det-fv-ppo" style="font-size: 13px; font-weight: 700;">- W / - kg</span>
                       </div>
                     </div>
                   </div>
@@ -534,9 +536,9 @@
               <div class="card-body">
                 <div class="fv-metrics-row">
                   <div class="fv-metric-box">
-                    <span class="label">1RM Stimato (L₀)</span>
+                    <span class="label">1RM Allenabile</span>
                     <h3 id="fv-est-1rm">- kg</h3>
-                    <span class="subtext">Velocità 0 m/s</span>
+                    <span class="subtext">Soglia 0.30 m/s</span>
                   </div>
                   <div class="fv-metric-box">
                     <span class="label">Velocità Max (V₀)</span>
@@ -554,14 +556,14 @@
                     <span class="subtext" id="fv-est-r2-eval">Attendibilità test</span>
                   </div>
                   <div class="fv-metric-box">
-                    <span class="label">Carico a 0.30 m/s</span>
-                    <h3 id="fv-est-load030">- kg</h3>
-                    <span class="subtext">Soglia velocità</span>
-                  </div>
-                  <div class="fv-metric-box">
                     <span class="label">PPO Max Potenza</span>
                     <h3 id="fv-est-ppo">- W</h3>
                     <span class="subtext" id="fv-est-load-ppo">al carico di - kg</span>
+                  </div>
+                  <div class="fv-metric-box">
+                    <span class="label">Forza Teorica (L₀)</span>
+                    <h3 id="fv-est-l0">- kg</h3>
+                    <span class="subtext">Estrapolata a 0 m/s</span>
                   </div>
                 </div>
 
